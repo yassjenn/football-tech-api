@@ -1,8 +1,9 @@
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.telemetry import setup_telemetry
-from prometheus_fastapi_instrumentator import Instrumentator
 
 
 def create_app() -> FastAPI:
