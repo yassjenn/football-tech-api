@@ -1,16 +1,18 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 
+if TYPE_CHECKING:
+    from app.models.organization import Organization
+    from app.models.user import User
+
 
 class Coach(Base, TimestampMixin):
-    """
-    Perfil de entrenador vinculado a un User.
-    Separamos autenticación (User) de datos de dominio (Coach)
-    para mantener la tabla users limpia y extensible.
-    """
-
     __tablename__ = "coaches"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -20,7 +22,7 @@ class Coach(Base, TimestampMixin):
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
-        unique=True,  # un user solo puede tener un perfil de coach
+        unique=True,
         nullable=False,
     )
     organization_id: Mapped[int] = mapped_column(
@@ -29,9 +31,8 @@ class Coach(Base, TimestampMixin):
         index=True,
     )
 
-    # Relaciones
-    user: Mapped["User"] = relationship(back_populates="coach_profile")
-    organization: Mapped["Organization"] = relationship()
+    user: Mapped[User] = relationship(back_populates="coach_profile")
+    organization: Mapped[Organization] = relationship()
 
     def __repr__(self) -> str:
         return f"<Coach id={self.id} user_id={self.user_id}>"

@@ -1,27 +1,24 @@
+from __future__ import annotations
+
 import enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 
+if TYPE_CHECKING:
+    from app.models.coach import Coach
+    from app.models.organization import Organization
 
-class UserRole(str, enum.Enum):
-    """
-    Roles del sistema. Heredar de str permite serializar el enum
-    directamente a JSON sin conversión adicional.
-    """
 
+class UserRole(enum.StrEnum):
     ADMIN = "admin"
     COACH = "coach"
 
 
 class User(Base, TimestampMixin):
-    """
-    Usuario del sistema (admin o entrenador).
-    Los jugadores no tienen cuenta — confirman asistencia via token único.
-    """
-
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -39,9 +36,8 @@ class User(Base, TimestampMixin):
         index=True,
     )
 
-    # Relaciones
-    organization: Mapped["Organization"] = relationship(back_populates="users")
-    coach_profile: Mapped["Coach"] = relationship(back_populates="user", uselist=False)
+    organization: Mapped[Organization] = relationship(back_populates="users")
+    coach_profile: Mapped[Coach] = relationship(back_populates="user", uselist=False)
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"

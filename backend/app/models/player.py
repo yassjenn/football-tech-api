@@ -1,18 +1,18 @@
+from __future__ import annotations
+
 from datetime import date
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 
+if TYPE_CHECKING:
+    from app.models.organization import Organization
+
 
 class Player(Base, TimestampMixin):
-    """
-    Jugador de la organización.
-    No tiene cuenta — interactúa con el sistema via tokens únicos.
-    El email se usa para enviarle convocatorias y como identificador único.
-    """
-
     __tablename__ = "players"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -28,8 +28,7 @@ class Player(Base, TimestampMixin):
         index=True,
     )
 
-    # Relaciones
-    organization: Mapped["Organization"] = relationship(back_populates="players")
+    organization: Mapped[Organization] = relationship(back_populates="players")
 
     def __repr__(self) -> str:
         return f"<Player id={self.id} email={self.email}>"
