@@ -1,3 +1,4 @@
+from app.models.admin import Admin
 from app.models.coach import Coach
 from app.models.organization import Organization
 from app.models.player import Player
@@ -56,3 +57,11 @@ def test_player_model():
     assert player.is_active is True
     assert player.phone is None
     assert "juan@email.com" in repr(player)
+
+
+def test_admin_model():
+    admin = Admin(user_id=1, organization_id=1, phone="600000001", is_active=True)
+    assert admin.user_id == 1
+    assert admin.is_active is True
+    assert admin.phone == "600000001"
+    assert repr(admin) == "<Admin id=None user_id=1>"

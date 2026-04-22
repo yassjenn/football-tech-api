@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.admin import Admin
     from app.models.coach import Coach
     from app.models.organization import Organization
 
@@ -37,6 +38,7 @@ class User(Base, TimestampMixin):
     )
 
     organization: Mapped[Organization] = relationship(back_populates="users")
+    admin_profile: Mapped[Admin] = relationship(back_populates="user", uselist=False)
     coach_profile: Mapped[Coach] = relationship(back_populates="user", uselist=False)
 
     def __repr__(self) -> str:

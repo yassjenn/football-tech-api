@@ -1,3 +1,4 @@
+from app.models.admin import Admin
 from app.models.base import Base, TimestampMixin
 from app.models.coach import Coach
 from app.models.organization import Organization
@@ -10,6 +11,7 @@ __all__ = [
     "Organization",
     "User",
     "UserRole",
+    "Admin",
     "Coach",
     "Player",
 ]
