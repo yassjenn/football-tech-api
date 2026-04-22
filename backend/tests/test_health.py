@@ -8,8 +8,7 @@ from main import app
 async def test_health_check():
     """Verifica que el endpoint /health responde correctamente."""
     async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         response = await client.get("/health")
 

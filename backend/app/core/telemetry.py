@@ -11,11 +11,13 @@ from app.core.config import settings
 
 
 def setup_telemetry(app: FastAPI) -> None:
-    resource = Resource.create({
-        "service.name": settings.APP_NAME,
-        "service.version": settings.APP_VERSION,
-        "deployment.environment": settings.ENVIRONMENT,
-    })
+    resource = Resource.create(
+        {
+            "service.name": settings.APP_NAME,
+            "service.version": settings.APP_VERSION,
+            "deployment.environment": settings.ENVIRONMENT,
+        }
+    )
 
     provider = TracerProvider(resource=resource)
 
