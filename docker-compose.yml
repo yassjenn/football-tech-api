@@ -1,0 +1,95 @@
+services:
+
+  # ── Base de datos ──────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    # alpine = imagen mínima, mucho más ligera que la estándar
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: football_tech
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persiste los datos aunque el contenedor se destruya
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── API ────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      # Sobreescribe la URL para usar el nombre del servicio Docker, no localhost
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/football_tech
+      OTLP_ENDPOINT: http://tempo:4317
+    volumes:
+      # En desarrollo, monta el código para hot-reload sin reconstruir imagen
+      - ./backend:/app
+      - ./backend/logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy  # espera a que postgres esté listo
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ── Métricas ───────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    # Prometheus recoge métricas de /metrics de la API cada 15s
+
+  # ── Logs ───────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # ── Tracing ────────────────────────────────────────────────────
+  tempo:
+    image: grafana/tempo:latest
+    ports:
+      - "3200:3200"   # HTTP API de Tempo
+      - "4317:4317"   # Puerto OTLP gRPC (recibe trazas de la API)
+    volumes:
+      - ./observability/tempo/tempo-config.yml:/etc/tempo/tempo-config.yml
+      - tempo_data:/tmp/tempo
+    command: -config.file=/etc/tempo/tempo-config.yml
+
+  # ── Dashboard ──────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+volumes:
+  postgres_data:
+  loki_data:
+  tempo_data:
+  grafana_data:

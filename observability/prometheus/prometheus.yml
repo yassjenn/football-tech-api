@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 15s      # cada 15s recoge métricas de todos los targets
+  evaluation_interval: 15s  # cada 15s evalúa las reglas de alertas
+
+scrape_configs:
+  - job_name: "football-tech-api"
+    # Apunta al endpoint /metrics que expusimos con prometheus-fastapi-instrumentator
+    static_configs:
+      - targets: ["api:8000"]

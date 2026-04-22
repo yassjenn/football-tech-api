@@ -1,0 +1,28 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E",   # errores de estilo (pycodestyle)
+    "F",   # errores lógicos (pyflakes)
+    "I",   # orden de imports (isort)
+    "B",   # bugs comunes (flake8-bugbear)
+    "UP",  # modernización de sintaxis (pyupgrade)
+]
+ignore = [
+    "E501",  # líneas largas, ruff ya controla con line-length
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"        # todos los tests async sin decorador extra
+testpaths = ["tests"]
+pythonpath = ["."] 
+env = [
+    "DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/football_tech_test",
+    "SECRET_KEY=test_secret_key",
+    "ENVIRONMENT=test",
+]
