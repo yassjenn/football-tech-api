@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
+    from app.models.attendance import Attendance
     from app.models.organization import Organization
 
 
@@ -29,6 +30,7 @@ class Player(Base, TimestampMixin):
     )
 
     organization: Mapped[Organization] = relationship(back_populates="players")
+    attendances: Mapped[list[Attendance]] = relationship(back_populates="player")
 
     def __repr__(self) -> str:
         return f"<Player id={self.id} email={self.email}>"

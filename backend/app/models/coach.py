@@ -9,6 +9,7 @@ from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.organization import Organization
+    from app.models.session import Session
     from app.models.user import User
 
 
@@ -33,6 +34,7 @@ class Coach(Base, TimestampMixin):
 
     user: Mapped[User] = relationship(back_populates="coach_profile")
     organization: Mapped[Organization] = relationship()
+    sessions: Mapped[list[Session]] = relationship(back_populates="coach")
 
     def __repr__(self) -> str:
         return f"<Coach id={self.id} user_id={self.user_id}>"
