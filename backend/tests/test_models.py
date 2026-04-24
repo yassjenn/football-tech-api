@@ -52,9 +52,12 @@ def test_player_model():
         email="juan@email.com",
         organization_id=1,
         is_active=True,
+        is_verified=False,
     )
     assert player.full_name == "Juan García"
     assert player.is_active is True
+    assert player.is_verified is False
+    assert player.hashed_password is None
     assert player.phone is None
     assert "juan@email.com" in repr(player)
 

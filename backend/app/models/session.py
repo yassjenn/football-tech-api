@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from app.models.organization import Organization
 
 
-class SessionStatus(str, enum.Enum):
+class SessionStatus(enum.StrEnum):
     """
     Ciclo de vida de una sesión:
     - DRAFT: creada por el admin, pendiente de asignar
@@ -33,7 +33,7 @@ class SessionStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
-class SessionLevel(str, enum.Enum):
+class SessionLevel(enum.StrEnum):
     """Nivel de dificultad de la sesión, usado por la IA para generar contenido."""
 
     BEGINNER = "beginner"

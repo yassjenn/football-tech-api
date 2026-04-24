@@ -1,6 +1,6 @@
 from datetime import UTC, date, datetime
 
-from app.models.attendance import Attendance, AttendanceStatus
+from app.models.attendance import Attendance, AttendanceStatus, ConfirmedBy
 from app.models.convocation import Convocation
 from app.models.session import Session, SessionLevel, SessionStatus
 
@@ -65,3 +65,30 @@ def test_attendance_status_values():
     assert AttendanceStatus.CONFIRMED == "confirmed"
     assert AttendanceStatus.REJECTED == "rejected"
     assert AttendanceStatus.EXPIRED == "expired"
+
+
+def test_attendance_confirmed_by_admin():
+    """Verifica que el admin puede confirmar la asistencia de un jugador."""
+    attendance = Attendance(
+        convocation_id=1,
+        player_id=1,
+        confirmation_token="unique-token-abc123",
+        status=AttendanceStatus.CONFIRMED,
+        confirmed_by=ConfirmedBy.ADMIN,
+        feedback_generated_by_ai=False,
+    )
+    assert attendance.status == AttendanceStatus.CONFIRMED
+    assert attendance.confirmed_by == ConfirmedBy.ADMIN
+
+
+def test_attendance_confirmed_by_player():
+    """Verifica que el jugador puede confirmar su propia asistencia."""
+    attendance = Attendance(
+        convocation_id=1,
+        player_id=1,
+        confirmation_token="unique-token-xyz789",
+        status=AttendanceStatus.CONFIRMED,
+        confirmed_by=ConfirmedBy.PLAYER,
+        feedback_generated_by_ai=False,
+    )
+    assert attendance.confirmed_by == ConfirmedBy.PLAYER

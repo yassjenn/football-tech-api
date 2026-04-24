@@ -14,27 +14,31 @@ if TYPE_CHECKING:
     from app.models.player import Player
 
 
-class AttendanceStatus(str, enum.Enum):
-    """
-    Estados del ciclo de confirmación de asistencia:
-    - PENDING: convocatoria enviada, jugador no ha respondido
-    - CONFIRMED: jugador confirmó asistencia
-    - REJECTED: jugador rechazó asistencia
-    - EXPIRED: plazo de confirmación superado sin respuesta
-    """
-
+class AttendanceStatus(enum.StrEnum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
     REJECTED = "rejected"
     EXPIRED = "expired"
 
 
+class ConfirmedBy(enum.StrEnum):
+    """
+    Indica quién realizó la confirmación de asistencia.
+    - PLAYER: el jugador confirmó via login o token de email
+    - ADMIN: el admin confirmó manualmente desde el dashboard
+    """
+
+    PLAYER = "player"
+    ADMIN = "admin"
+
+
 class Attendance(Base, TimestampMixin):
     """
     Registro de asistencia individual de un jugador a una convocatoria.
-    El token único permite al jugador confirmar sin necesidad de login.
-    Las evaluaciones (técnica, físico, actitud) se registran aquí
-    tras la sesión.
+    La confirmación puede realizarse de tres formas:
+    1. Via token único recibido por email (sin login)
+    2. Via login del jugador en la plataforma
+    3. Via acción manual del admin desde el dashboard
     """
 
     __tablename__ = "attendances"
@@ -45,7 +49,7 @@ class Attendance(Base, TimestampMixin):
         default=AttendanceStatus.PENDING,
     )
 
-    # Token único para confirmación sin login (RF-10)
+    # Token único para confirmación sin login via email
     confirmation_token: Mapped[str] = mapped_column(
         String(255),
         unique=True,
@@ -56,6 +60,9 @@ class Attendance(Base, TimestampMixin):
         DateTime(timezone=True),
         nullable=True,
     )
+
+    # Trazabilidad: quién realizó la confirmación
+    confirmed_by: Mapped[ConfirmedBy | None] = mapped_column(nullable=True)
 
     # Evaluaciones post-sesión (RF-21)
     technique_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -77,7 +84,6 @@ class Attendance(Base, TimestampMixin):
         index=True,
     )
 
-    # Relaciones
     convocation: Mapped[Convocation] = relationship(back_populates="attendances")
     player: Mapped[Player] = relationship(back_populates="attendances")
 

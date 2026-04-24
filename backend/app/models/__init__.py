@@ -1,5 +1,5 @@
 from app.models.admin import Admin
-from app.models.attendance import Attendance, AttendanceStatus
+from app.models.attendance import Attendance, AttendanceStatus, ConfirmedBy
 from app.models.base import Base, TimestampMixin
 from app.models.coach import Coach
 from app.models.convocation import Convocation
@@ -23,4 +23,5 @@ __all__ = [
     "Convocation",
     "Attendance",
     "AttendanceStatus",
+    "ConfirmedBy",
 ]
