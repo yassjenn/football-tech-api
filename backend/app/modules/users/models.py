@@ -185,6 +185,3 @@ class PlayerProfile(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<PlayerProfile id={self.id} user_id={self.user_id}>"
-
-
-

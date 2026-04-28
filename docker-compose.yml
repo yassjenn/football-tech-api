@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: football_tech
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       # Persiste los datos aunque el contenedor se destruya
       - postgres_data:/var/lib/postgresql/data
