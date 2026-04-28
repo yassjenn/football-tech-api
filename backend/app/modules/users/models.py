@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import enum
+from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import Date, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
@@ -17,6 +18,7 @@ class UserRole(enum.StrEnum):
     ADMIN = "admin"
     COACH = "coach"
     GUARDIAN = "guardian"
+    PLAYER = "player"
 
 
 class User(Base, TimestampMixin):
@@ -48,6 +50,9 @@ class User(Base, TimestampMixin):
         back_populates="user", uselist=False
     )
     guardian_profile: Mapped[GuardianProfile | None] = relationship(
+        back_populates="user", uselist=False
+    )
+    player_profile: Mapped[PlayerProfile | None] = relationship(
         back_populates="user", uselist=False
     )
 
@@ -134,3 +139,52 @@ class GuardianProfile(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<GuardianProfile id={self.id} user_id={self.user_id}>"
+
+
+class PlayerProfile(Base, TimestampMixin):
+    """
+    Perfil de jugador vinculado a un User.
+    El jugador tiene login propio para confirmar asistencia,
+    ver historial de sesiones y consultar evaluaciones.
+    Solo jugadores mayores de edad tienen acceso — los menores
+    usan el login de su Guardian.
+    """
+
+    __tablename__ = "player_profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    organization_id: Mapped[int] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    user: Mapped[User] = relationship(back_populates="player_profile")
+
+    @property
+    def is_minor(self) -> bool:
+        """Calcula si el jugador es menor de edad desde birth_date."""
+        if self.birth_date is None:
+            return False
+        today = date.today()
+        age = (
+            today.year
+            - self.birth_date.year
+            - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
+        )
+        return age < 18
+
+    def __repr__(self) -> str:
+        return f"<PlayerProfile id={self.id} user_id={self.user_id}>"
+
+
+

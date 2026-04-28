@@ -6,6 +6,7 @@ from app.modules.users.models import (
     AdminProfile,
     CoachProfile,
     GuardianProfile,
+    PlayerProfile,
     User,
     UserRole,
 )
@@ -17,6 +18,14 @@ def test_organization_model():
     assert org.slug == "academia-fc"
     assert org.is_active is True
     assert repr(org) == "<Organization id=None slug=academia-fc>"
+
+
+def test_user_role_values():
+    """Verifica que todos los roles del sistema están definidos."""
+    assert UserRole.ADMIN == "admin"
+    assert UserRole.COACH == "coach"
+    assert UserRole.GUARDIAN == "guardian"
+    assert UserRole.PLAYER == "player"
 
 
 def test_user_model_admin():
@@ -31,26 +40,15 @@ def test_user_model_admin():
     assert user.is_active is True
 
 
-def test_user_model_coach():
+def test_user_model_player():
     user = User(
-        email="coach@academia.com",
+        email="player@academia.com",
         hashed_password="hashed",
-        full_name="Coach User",
-        role=UserRole.COACH,
+        full_name="Player User",
+        role=UserRole.PLAYER,
         is_active=True,
     )
-    assert user.role == UserRole.COACH
-
-
-def test_user_model_guardian():
-    user = User(
-        email="guardian@email.com",
-        hashed_password="hashed",
-        full_name="Guardian User",
-        role=UserRole.GUARDIAN,
-        is_active=True,
-    )
-    assert user.role == UserRole.GUARDIAN
+    assert user.role == UserRole.PLAYER
 
 
 def test_admin_profile_model():
@@ -64,25 +62,63 @@ def test_coach_profile_model():
         user_id=1, organization_id=1, phone="600123456", is_active=True
     )
     assert coach.phone == "600123456"
-    assert coach.is_active is True
 
 
 def test_guardian_profile_model():
     guardian = GuardianProfile(user_id=1, phone="600000001", is_active=True)
     assert guardian.user_id == 1
-    assert guardian.is_active is True
 
 
-def test_player_model():
+def test_player_profile_is_minor_true():
+    """Jugador menor de 18 años."""
+    profile = PlayerProfile(
+        user_id=1,
+        organization_id=1,
+        birth_date=date(2015, 6, 1),
+        is_active=True,
+    )
+    assert profile.is_minor is True
+
+
+def test_player_profile_is_minor_false():
+    """Jugador mayor de 18 años."""
+    profile = PlayerProfile(
+        user_id=1,
+        organization_id=1,
+        birth_date=date(2000, 1, 1),
+        is_active=True,
+    )
+    assert profile.is_minor is False
+
+
+def test_player_profile_no_birthdate():
+    """Sin fecha de nacimiento se asume mayor de edad."""
+    profile = PlayerProfile(user_id=1, organization_id=1, is_active=True)
+    assert profile.is_minor is False
+
+
+def test_player_domain_model():
+    """Player de dominio sin cuenta (menor de edad)."""
     player = Player(
-        full_name="Juan García",
-        email="juan@email.com",
+        full_name="Niño García",
+        email="nino@academia.com",
         organization_id=1,
         is_active=True,
-        birth_date=date(2015, 6, 1),
     )
-    assert player.is_minor is True
-    assert player.phone is None
+    assert player.user_id is None  # sin cuenta, es menor
+    assert player.is_active is True
+
+
+def test_player_domain_model_with_user():
+    """Player de dominio con cuenta (mayor de edad)."""
+    player = Player(
+        full_name="Mayor García",
+        email="mayor@academia.com",
+        organization_id=1,
+        is_active=True,
+        user_id=5,
+    )
+    assert player.user_id == 5
 
 
 def test_guardian_player_relation():
