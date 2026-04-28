@@ -3,35 +3,26 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, ForeignKey, String
+from sqlalchemy import Date, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.core.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
-    from app.models.attendance import Attendance
-    from app.models.guardian import Guardian
-    from app.models.organization import Organization
+    from app.modules.attendance.models import Attendance
+    from app.modules.organizations.models import Organization
+    from app.modules.users.models import GuardianProfile
 
 
 class Player(Base, TimestampMixin):
-    """
-    Jugador de la organización.
-    Si es menor de edad (< 18 años calculado desde birth_date),
-    la confirmación de asistencia recae en su guardian.
-    Puede tener varios guardians (padre y madre).
-    """
-
     __tablename__ = "players"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
-    is_verified: Mapped[bool] = mapped_column(nullable=False, default=False)
 
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"),
@@ -41,17 +32,13 @@ class Player(Base, TimestampMixin):
 
     organization: Mapped[Organization] = relationship(back_populates="players")
     attendances: Mapped[list[Attendance]] = relationship(back_populates="player")
-    guardians: Mapped[list[Guardian]] = relationship(
+    guardians: Mapped[list[GuardianProfile]] = relationship(
         secondary="guardian_players",
         back_populates="players",
     )
 
     @property
     def is_minor(self) -> bool:
-        """
-        Calcula si el jugador es menor de edad en base a birth_date.
-        Si no hay fecha de nacimiento registrada, se asume mayor de edad.
-        """
         if self.birth_date is None:
             return False
         today = date.today()
@@ -64,3 +51,29 @@ class Player(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<Player id={self.id} email={self.email}>"
+
+
+class GuardianPlayer(Base):
+    """Tabla intermedia Guardian ↔ Player."""
+
+    __tablename__ = "guardian_players"
+
+    __table_args__ = (
+        UniqueConstraint("guardian_id", "player_id", name="uq_guardian_player"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    guardian_id: Mapped[int] = mapped_column(
+        ForeignKey("guardian_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    player_id: Mapped[int] = mapped_column(
+        ForeignKey("players.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    def __repr__(self) -> str:
+        return f"<GuardianPlayer guardian_id={self.guardian_id} player_id={self.player_id}>"

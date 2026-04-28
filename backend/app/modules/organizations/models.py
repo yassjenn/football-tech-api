@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.core.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
-    from app.models.player import Player
-    from app.models.user import User
+    from app.modules.players.models import Player
+    from app.modules.users.models import User
 
 
 class Organization(Base, TimestampMixin):

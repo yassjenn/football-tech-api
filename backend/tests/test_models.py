@@ -1,8 +1,14 @@
-from app.models.admin import Admin
-from app.models.coach import Coach
-from app.models.organization import Organization
-from app.models.player import Player
-from app.models.user import User, UserRole
+from datetime import date
+
+from app.modules.organizations.models import Organization
+from app.modules.players.models import GuardianPlayer, Player
+from app.modules.users.models import (
+    AdminProfile,
+    CoachProfile,
+    GuardianProfile,
+    User,
+    UserRole,
+)
 
 
 def test_organization_model():
@@ -19,12 +25,10 @@ def test_user_model_admin():
         hashed_password="hashed",
         full_name="Admin User",
         role=UserRole.ADMIN,
-        organization_id=1,
         is_active=True,
     )
     assert user.role == UserRole.ADMIN
     assert user.is_active is True
-    assert "admin@academia.com" in repr(user)
 
 
 def test_user_model_coach():
@@ -33,17 +37,40 @@ def test_user_model_coach():
         hashed_password="hashed",
         full_name="Coach User",
         role=UserRole.COACH,
-        organization_id=1,
         is_active=True,
     )
     assert user.role == UserRole.COACH
 
 
-def test_coach_model():
-    coach = Coach(user_id=1, organization_id=1, phone="600123456", is_active=True)
-    assert coach.user_id == 1
-    assert coach.is_active is True
+def test_user_model_guardian():
+    user = User(
+        email="guardian@email.com",
+        hashed_password="hashed",
+        full_name="Guardian User",
+        role=UserRole.GUARDIAN,
+        is_active=True,
+    )
+    assert user.role == UserRole.GUARDIAN
+
+
+def test_admin_profile_model():
+    admin = AdminProfile(user_id=1, organization_id=1, is_active=True)
+    assert admin.user_id == 1
+    assert admin.is_active is True
+
+
+def test_coach_profile_model():
+    coach = CoachProfile(
+        user_id=1, organization_id=1, phone="600123456", is_active=True
+    )
     assert coach.phone == "600123456"
+    assert coach.is_active is True
+
+
+def test_guardian_profile_model():
+    guardian = GuardianProfile(user_id=1, phone="600000001", is_active=True)
+    assert guardian.user_id == 1
+    assert guardian.is_active is True
 
 
 def test_player_model():
@@ -52,19 +79,13 @@ def test_player_model():
         email="juan@email.com",
         organization_id=1,
         is_active=True,
-        is_verified=False,
+        birth_date=date(2015, 6, 1),
     )
-    assert player.full_name == "Juan García"
-    assert player.is_active is True
-    assert player.is_verified is False
-    assert player.hashed_password is None
+    assert player.is_minor is True
     assert player.phone is None
-    assert "juan@email.com" in repr(player)
 
 
-def test_admin_model():
-    admin = Admin(user_id=1, organization_id=1, phone="600000001", is_active=True)
-    assert admin.user_id == 1
-    assert admin.is_active is True
-    assert admin.phone == "600000001"
-    assert repr(admin) == "<Admin id=None user_id=1>"
+def test_guardian_player_relation():
+    gp = GuardianPlayer(guardian_id=1, player_id=1)
+    assert gp.guardian_id == 1
+    assert gp.player_id == 1

@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.core.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
-    from app.models.convocation import Convocation
-    from app.models.player import Player
+    from app.modules.convocations.models import Convocation
+    from app.modules.players.models import Player
 
 
 class AttendanceStatus(enum.StrEnum):
@@ -22,51 +22,26 @@ class AttendanceStatus(enum.StrEnum):
 
 
 class ConfirmedBy(enum.StrEnum):
-    """
-    Indica quién realizó la confirmación de asistencia:
-    - PLAYER: el propio jugador (mayor de edad)
-    - GUARDIAN: el padre/tutor del jugador menor
-    - ADMIN: el admin confirmó manualmente desde el dashboard
-    """
-
     PLAYER = "player"
     GUARDIAN = "guardian"
     ADMIN = "admin"
 
 
 class Attendance(Base, TimestampMixin):
-    """
-    Registro de asistencia individual de un jugador a una convocatoria.
-    La confirmación puede realizarse de tres formas:
-    1. Via token único recibido por email (sin login)
-    2. Via login del jugador en la plataforma
-    3. Via acción manual del admin desde el dashboard
-    """
-
     __tablename__ = "attendances"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     status: Mapped[AttendanceStatus] = mapped_column(
-        nullable=False,
-        default=AttendanceStatus.PENDING,
+        nullable=False, default=AttendanceStatus.PENDING
     )
-
-    # Token único para confirmación sin login via email
     confirmation_token: Mapped[str] = mapped_column(
-        String(255),
-        unique=True,
-        nullable=False,
-        index=True,
+        String(255), unique=True, nullable=False, index=True
     )
     confirmed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
+        DateTime(timezone=True), nullable=True
     )
-
-    # Trazabilidad: quién realizó la confirmación
     confirmed_by: Mapped[ConfirmedBy | None] = mapped_column(nullable=True)
 
-    # Evaluaciones post-sesión (RF-21)
     technique_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     physical_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     attitude_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
