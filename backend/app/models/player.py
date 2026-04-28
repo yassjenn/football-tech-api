@@ -10,15 +10,16 @@ from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.attendance import Attendance
+    from app.models.guardian import Guardian
     from app.models.organization import Organization
 
 
 class Player(Base, TimestampMixin):
     """
     Jugador de la organización.
-    Tiene acceso a la plataforma para visualizar sus sesiones,
-    evaluaciones y confirmar asistencia.
-    También puede confirmar via token único recibido por email.
+    Si es menor de edad (< 18 años calculado desde birth_date),
+    la confirmación de asistencia recae en su guardian.
+    Puede tener varios guardians (padre y madre).
     """
 
     __tablename__ = "players"
@@ -40,6 +41,26 @@ class Player(Base, TimestampMixin):
 
     organization: Mapped[Organization] = relationship(back_populates="players")
     attendances: Mapped[list[Attendance]] = relationship(back_populates="player")
+    guardians: Mapped[list[Guardian]] = relationship(
+        secondary="guardian_players",
+        back_populates="players",
+    )
+
+    @property
+    def is_minor(self) -> bool:
+        """
+        Calcula si el jugador es menor de edad en base a birth_date.
+        Si no hay fecha de nacimiento registrada, se asume mayor de edad.
+        """
+        if self.birth_date is None:
+            return False
+        today = date.today()
+        age = (
+            today.year
+            - self.birth_date.year
+            - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
+        )
+        return age < 18
 
     def __repr__(self) -> str:
         return f"<Player id={self.id} email={self.email}>"

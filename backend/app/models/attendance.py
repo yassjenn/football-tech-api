@@ -23,12 +23,14 @@ class AttendanceStatus(enum.StrEnum):
 
 class ConfirmedBy(enum.StrEnum):
     """
-    Indica quién realizó la confirmación de asistencia.
-    - PLAYER: el jugador confirmó via login o token de email
+    Indica quién realizó la confirmación de asistencia:
+    - PLAYER: el propio jugador (mayor de edad)
+    - GUARDIAN: el padre/tutor del jugador menor
     - ADMIN: el admin confirmó manualmente desde el dashboard
     """
 
     PLAYER = "player"
+    GUARDIAN = "guardian"
     ADMIN = "admin"
 
 
