@@ -22,7 +22,9 @@ asyncio_mode = "auto"        # todos los tests async sin decorador extra
 testpaths = ["tests"]
 pythonpath = ["."] 
 env = [
-    "DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/football_tech_test",
+    "DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5433/football_tech_test",
     "SECRET_KEY=test_secret_key",
     "ENVIRONMENT=test",
+    "LOG_LEVEL=ERROR",
+    "OTLP_ENDPOINT=http://localhost:4317",
 ]
