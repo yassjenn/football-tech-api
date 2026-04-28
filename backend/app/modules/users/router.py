@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
+from app.modules.users.models import User
 from app.modules.users.schemas import (
     LoginRequest,
     RegisterRequest,
@@ -47,3 +49,12 @@ async def login(data: LoginRequest, db: Annotated[AsyncSession, Depends(get_db)]
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)
         ) from e
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: Annotated[User, Depends(get_current_user)]):
+    """
+    Devuelve los datos del usuario autenticado.
+    Requiere JWT válido en el header Authorization: Bearer <token>.
+    """
+    return current_user

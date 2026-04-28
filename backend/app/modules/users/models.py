@@ -103,7 +103,7 @@ class CoachProfile(Base, TimestampMixin):
     )
     organization_id: Mapped[int] = mapped_column(
         ForeignKey("organizations.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
 

@@ -64,10 +64,10 @@ class AuthService:
         self.db.add(admin_profile)
 
     async def _create_coach(self, user: User) -> None:
-        """Crea el perfil de coach."""
+        """Crea el perfil de coach sin organización — el admin la asigna después."""
         coach_profile = CoachProfile(
             user_id=user.id,
-            organization_id=user.organization_id,
+            organization_id=None,
             is_active=True,
         )
         self.db.add(coach_profile)

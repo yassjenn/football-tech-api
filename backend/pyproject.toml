@@ -12,6 +12,7 @@ select = [
 ]
 ignore = [
     "E501",  # líneas largas, ruff ya controla con line-length
+    "B008"   # Depends() en argumentos es patrón válido en FastAPI
 ]
 
 [tool.ruff.lint.isort]
