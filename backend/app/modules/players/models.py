@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from sqlalchemy import Date, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
@@ -14,18 +15,14 @@ if TYPE_CHECKING:
 
 
 class Player(Base, TimestampMixin):
-    """
-    Modelo de dominio del jugador.
-    La autenticación se gestiona via User (role=PLAYER).
-    Los jugadores menores de edad no tienen User propio —
-    sus guardians gestionan la confirmación de asistencia.
-    """
-
     __tablename__ = "players"
+    """tabla de jugadores. Cada jugador puede tener un User asociado (si es mayor de edad) y varios GuardianProfiles (si es menor)."""
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
 
     organization_id: Mapped[int] = mapped_column(
@@ -33,8 +30,6 @@ class Player(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-
-    # FK opcional a User — solo jugadores mayores de edad tienen cuenta
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
         unique=True,
@@ -48,6 +43,18 @@ class Player(Base, TimestampMixin):
         secondary="guardian_players",
         back_populates="players",
     )
+
+    @property
+    def is_minor(self) -> bool:
+        if self.birth_date is None:
+            return False
+        today = date.today()
+        age = (
+            today.year
+            - self.birth_date.year
+            - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
+        )
+        return age < 18
 
     def __repr__(self) -> str:
         return f"<Player id={self.id} email={self.email}>"
