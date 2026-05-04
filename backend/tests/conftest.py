@@ -1,12 +1,12 @@
+import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 from app.core.database import Base, get_db
 from main import app
 
-# Engine dedicado para tests
 test_engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
@@ -22,11 +22,6 @@ TestSessionLocal = async_sessionmaker(
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_db():
-    """
-    Crea tablas antes del test y las elimina después.
-    Solo se usa en tests que lo soliciten explícitamente.
-    NO es autouse — los tests de modelos no necesitan DB.
-    """
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -36,12 +31,17 @@ async def setup_db():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(setup_db):
+async def db_session(setup_db):
     """
-    Cliente HTTP con DB de test inyectada.
-    Depende de setup_db — crea y destruye tablas por test.
+    Sesión de base de datos para tests de servicio.
+    Depende de setup_db para garantizar que las tablas existen.
     """
+    async with TestSessionLocal() as session:
+        yield session
 
+
+@pytest_asyncio.fixture(scope="function")
+async def client(setup_db):
     async def override_get_db():
         async with TestSessionLocal() as session:
             try:
