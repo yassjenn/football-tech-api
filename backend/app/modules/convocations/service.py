@@ -91,6 +91,87 @@ class ConvocationService:
 
         await self.db.commit()
         await self.db.refresh(convocation)
+
+        # Importación local para evitar circular imports
+        from app.core.email import send_convocation_email
+        from app.modules.organizations.models import Organization
+
+        org_result = await self.db.execute(
+            select(Organization).where(Organization.id == organization_id)
+        )
+        organization = org_result.scalar_one()
+
+        session_date_str = session.session_date.strftime("%d/%m/%Y")
+        deadline_str = deadline.strftime("%d/%m/%Y %H:%M")
+
+        # Envía email a cada jugador convocado con el token de confirmación
+        for player, attendance in zip(players, attendances, strict=True):
+            await self.db.refresh(attendance)
+
+            # Determina si enviar al guardian o al jugador
+            if player.is_minor:
+                # Obtiene los guardians del jugador
+                from app.modules.players.models import GuardianPlayer
+                from app.modules.users.models import GuardianProfile, User
+
+                guardians_result = await self.db.execute(
+                    select(User, GuardianProfile)
+                    .join(GuardianProfile, GuardianProfile.user_id == User.id)
+                    .join(
+                        GuardianPlayer, GuardianPlayer.guardian_id == GuardianProfile.id
+                    )
+                    .where(GuardianPlayer.player_id == player.id)
+                )
+                guardians = list(guardians_result.all())
+
+                if guardians:
+                    for guardian_user, _ in guardians:
+                        await send_convocation_email(
+                            to_email=guardian_user.email,
+                            to_name=guardian_user.full_name,
+                            player_name=player.full_name,
+                            organization_name=organization.name,
+                            session_title=session.title,
+                            session_date=session_date_str,
+                            duration_minutes=session.duration_minutes,
+                            level=session.level.value,
+                            age_group=session.age_group,
+                            deadline=deadline_str,
+                            confirmation_token=attendance.confirmation_token,
+                            is_guardian=True,
+                        )
+                else:
+                    # Menor sin guardian — enviar al email del jugador
+                    await send_convocation_email(
+                        to_email=player.email,
+                        to_name=player.full_name,
+                        player_name=player.full_name,
+                        organization_name=organization.name,
+                        session_title=session.title,
+                        session_date=session_date_str,
+                        duration_minutes=session.duration_minutes,
+                        level=session.level.value,
+                        age_group=session.age_group,
+                        deadline=deadline_str,
+                        confirmation_token=attendance.confirmation_token,
+                        is_guardian=False,
+                    )
+            else:
+                await send_convocation_email(
+                    to_email=player.email,
+                    to_name=player.full_name,
+                    player_name=player.full_name,
+                    organization_name=organization.name,
+                    session_title=session.title,
+                    session_date=session_date_str,
+                    duration_minutes=session.duration_minutes,
+                    level=session.level.value,
+                    age_group=session.age_group,
+                    deadline=deadline_str,
+                    confirmation_token=attendance.confirmation_token,
+                    is_guardian=False,
+                )
+
         return convocation, attendances
 
     async def get_convocation_by_id(

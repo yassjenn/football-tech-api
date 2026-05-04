@@ -20,6 +20,19 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "DEBUG"
     OTLP_ENDPOINT: str = "http://localhost:4317"
 
+    # Email
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = "noreply@footballtech.com"
+    MAIL_PORT: int = 587
+    MAIL_SERVER: str = "smtp.gmail.com"
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+    MAIL_ENABLED: bool = False  # False en desarrollo — no envía emails reales
+
+    # Frontend URL para construir los enlaces de confirmación
+    FRONTEND_URL: str = "http://localhost:3000"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

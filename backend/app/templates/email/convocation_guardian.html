@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Convocatoria de entrenamiento</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; }
+        .header { background-color: #1a56db; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+        .content { background-color: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+        .session-info { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #1a56db; }
+        .btn-confirm { display: inline-block; background-color: #16a34a; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 10px 5px; }
+        .btn-reject { display: inline-block; background-color: #dc2626; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 10px 5px; }
+        .deadline { color: #dc2626; font-weight: bold; }
+        .footer { text-align: center; color: #6b7280; font-size: 12px; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚽ Convocatoria de Entrenamiento</h1>
+        <p>{{ organization_name }}</p>
+    </div>
+    <div class="content">
+        <p>Hola <strong>{{ guardian_name }}</strong>,</p>
+        <p>Su hijo/a <strong>{{ player_name }}</strong> ha sido convocado/a para la siguiente sesión:</p>
+
+        <div class="session-info">
+            <h3>{{ session_title }}</h3>
+            <p>📅 <strong>Fecha:</strong> {{ session_date }}</p>
+            <p>⏱ <strong>Duración:</strong> {{ duration_minutes }} minutos</p>
+            <p>🎯 <strong>Nivel:</strong> {{ level }}</p>
+            {% if age_group %}
+            <p>👥 <strong>Categoría:</strong> {{ age_group }}</p>
+            {% endif %}
+        </div>
+
+        <p>Por favor confirme la asistencia de {{ player_name }} antes del <span class="deadline">{{ deadline }}</span>.</p>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{ confirm_url }}" class="btn-confirm">✅ Confirmar asistencia</a>
+            <a href="{{ reject_url }}" class="btn-reject">❌ No puede asistir</a>
+        </div>
+    </div>
+    <div class="footer">
+        <p>Este mensaje fue enviado por {{ organization_name }}.<br>
+        No respondas a este email — es un mensaje automático.</p>
+    </div>
+</body>
+</html>
