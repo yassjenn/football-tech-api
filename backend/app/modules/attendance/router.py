@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_admin, get_current_user
+from app.core.dependencies import get_current_admin
 from app.modules.attendance.models import ConfirmedBy
 from app.modules.attendance.schemas import (
     AttendanceAdminConfirmRequest,
@@ -22,12 +22,12 @@ async def confirm_via_token(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Confirma o rechaza asistencia via token único del enlace de email.
-    No requiere autenticación — el token es el mecanismo de seguridad.
+    Confirma o rechaza asistencia via token único (sin login).
+    El jugador/guardian clica el enlace del email y llega aquí.
     """
     try:
         service = AttendanceService(db)
-        attendance = await service.confirm_via_token(token, data.confirm)
+        attendance = await service.confirm_via_token(token, data.action)
         return attendance
     except ValueError as e:
         raise HTTPException(
@@ -36,28 +36,30 @@ async def confirm_via_token(
 
 
 @router.post("/confirm-authenticated", response_model=AttendanceResponse)
-async def confirm_authenticated(
-    jwt_token: str,
-    data: AttendanceConfirmRequest,
-    current_user: User = Depends(get_current_user),
+async def confirm_via_jwt(
+    convocation_id: int,
+    player_id: int,
+    action: str,
+    current_user: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Confirma asistencia via JWT para jugadores y guardians autenticados.
-    Determina automáticamente el confirmed_by según el rol del usuario.
+    Confirma o rechaza asistencia cuando el usuario está autenticado.
+    Determina automáticamente quién confirma (player/guardian/admin).
     """
-    from app.modules.users.models import UserRole
-
-    confirmed_by = (
-        ConfirmedBy.GUARDIAN
-        if current_user.role == UserRole.GUARDIAN
-        else ConfirmedBy.PLAYER
-    )
-
     try:
+        from app.modules.users.models import UserRole
+
+        if current_user.role == UserRole.ADMIN:
+            confirmed_by = ConfirmedBy.ADMIN
+        elif current_user.role == UserRole.GUARDIAN:
+            confirmed_by = ConfirmedBy.GUARDIAN
+        else:
+            confirmed_by = ConfirmedBy.PLAYER
+
         service = AttendanceService(db)
         attendance = await service.confirm_via_jwt(
-            jwt_token, data.confirm, confirmed_by
+            convocation_id, player_id, action, confirmed_by
         )
         return attendance
     except ValueError as e:
@@ -73,13 +75,13 @@ async def admin_confirm(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    El admin confirma manualmente la asistencia de un jugador desde el dashboard.
-    Requiere rol ADMIN.
+    El admin confirma manualmente la asistencia de un jugador.
+    Útil cuando el jugador no puede confirmar por su cuenta.
     """
     try:
         service = AttendanceService(db)
         attendance = await service.admin_confirm(
-            data.player_id, data.convocation_id, data.confirm
+            data.convocation_id, data.player_id, current_user.organization_id
         )
         return attendance
     except ValueError as e:

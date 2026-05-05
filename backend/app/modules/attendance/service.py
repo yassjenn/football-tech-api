@@ -1,10 +1,9 @@
 from datetime import UTC, datetime
 
-from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import decode_confirmation_jwt, generate_confirmation_token
+from app.core.security import generate_confirmation_token
 from app.modules.attendance.models import Attendance, AttendanceStatus, ConfirmedBy
 from app.modules.convocations.models import Convocation
 
@@ -39,135 +38,175 @@ class AttendanceService:
     async def confirm_via_token(
         self,
         token: str,
-        confirm: bool,
+        action: str | None = None,
+        confirm: bool | None = None,
     ) -> Attendance:
         """
-        Confirma o rechaza asistencia via token único del enlace de email.
-        Verifica que el token existe, que la convocatoria no ha expirado
-        y que la asistencia está en estado PENDING.
+        Confirma o rechaza asistencia via token único (sin login).
+        Acepta action='confirm'/'reject' o confirm=True/False (legacy).
         """
-        # Busca la asistencia por token
+        # Normaliza los dos formatos de llamada
+        if action is None and confirm is not None:
+            action = "confirm" if confirm else "reject"
+        if action not in ("confirm", "reject"):
+            raise ValueError("Invalid action")
+
         result = await self.db.execute(
             select(Attendance).where(Attendance.confirmation_token == token)
         )
         attendance = result.scalar_one_or_none()
-
         if not attendance:
             raise ValueError("Invalid confirmation token")
 
-        if attendance.status != AttendanceStatus.PENDING:
-            raise ValueError("Attendance already responded")
-
-        # Verifica que la convocatoria no ha expirado
-        conv_result = await self.db.execute(
+        convocation_result = await self.db.execute(
             select(Convocation).where(Convocation.id == attendance.convocation_id)
         )
-        convocation = conv_result.scalar_one_or_none()
-
-        if not convocation:
-            raise ValueError("Convocation not found")
+        convocation = convocation_result.scalar_one()
+        if not convocation.is_active:
+            raise ValueError("Convocation is no longer active")
 
         now = datetime.now(UTC)
-        if now > convocation.confirmation_deadline.replace(tzinfo=UTC):
+        deadline = convocation.confirmation_deadline
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=UTC)
+        if now > deadline:
             attendance.status = AttendanceStatus.EXPIRED
             await self.db.commit()
             raise ValueError("Confirmation deadline has passed")
 
-        # Actualiza el estado
-        attendance.status = (
-            AttendanceStatus.CONFIRMED if confirm else AttendanceStatus.REJECTED
-        )
-        attendance.confirmed_at = now
-        attendance.confirmed_by = ConfirmedBy.PLAYER
+        if action == "confirm":
+            attendance.status = AttendanceStatus.CONFIRMED
+            attendance.confirmed_by = ConfirmedBy.PLAYER
+        else:
+            attendance.status = AttendanceStatus.REJECTED
+            attendance.confirmed_by = ConfirmedBy.PLAYER
 
+        attendance.confirmed_at = now
         await self.db.commit()
         await self.db.refresh(attendance)
         return attendance
 
     async def confirm_via_jwt(
         self,
-        jwt_token: str,
-        confirm: bool,
+        convocation_id: int,
+        player_id: int,
+        action: str,
         confirmed_by: ConfirmedBy,
     ) -> Attendance:
         """
-        Confirma asistencia via JWT firmado.
-        Usado por jugadores y guardians autenticados en la plataforma.
+        Confirma o rechaza asistencia via login autenticado.
+        Usado cuando el jugador/guardian accede con su cuenta.
         """
-        try:
-            payload = decode_confirmation_jwt(jwt_token)
-            attendance_id = int(payload["sub"])
-        except (JWTError, KeyError, ValueError) as err:
-            raise ValueError("Invalid confirmation token") from err
-
         result = await self.db.execute(
-            select(Attendance).where(Attendance.id == attendance_id)
+            select(Attendance).where(
+                Attendance.convocation_id == convocation_id,
+                Attendance.player_id == player_id,
+            )
         )
         attendance = result.scalar_one_or_none()
-
         if not attendance:
             raise ValueError("Attendance not found")
 
-        if attendance.status != AttendanceStatus.PENDING:
-            raise ValueError("Attendance already responded")
-
-        attendance.status = (
-            AttendanceStatus.CONFIRMED if confirm else AttendanceStatus.REJECTED
+        # Verifica convocatoria activa
+        convocation_result = await self.db.execute(
+            select(Convocation).where(Convocation.id == convocation_id)
         )
-        attendance.confirmed_at = datetime.now(UTC)
-        attendance.confirmed_by = confirmed_by
+        convocation = convocation_result.scalar_one()
+        if not convocation.is_active:
+            raise ValueError("Convocation is no longer active")
 
+        # Verifica deadline
+        now = datetime.now(UTC)
+        deadline = convocation.confirmation_deadline
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=UTC)
+        if now > deadline:
+            attendance.status = AttendanceStatus.EXPIRED
+            await self.db.commit()
+            raise ValueError("Confirmation deadline has passed")
+
+        if action == "confirm":
+            attendance.status = AttendanceStatus.CONFIRMED
+        elif action == "reject":
+            attendance.status = AttendanceStatus.REJECTED
+        else:
+            raise ValueError("Invalid action")
+
+        attendance.confirmed_by = confirmed_by
+        attendance.confirmed_at = now
         await self.db.commit()
         await self.db.refresh(attendance)
         return attendance
 
     async def admin_confirm(
         self,
-        player_id: int,
         convocation_id: int,
-        confirm: bool,
+        player_id: int,
+        organization_id: int,
     ) -> Attendance:
-        """
-        El admin confirma o rechaza asistencia manualmente desde el dashboard.
-        No requiere token — el admin tiene acceso directo.
-        """
+        """El admin confirma manualmente la asistencia de un jugador."""
+        from app.modules.training.models import Session
+
+        # Verifica que la convocatoria pertenece a la organización
+        convocation_result = await self.db.execute(
+            select(Convocation)
+            .join(Session, Session.id == Convocation.session_id)
+            .where(
+                Convocation.id == convocation_id,
+                Session.organization_id == organization_id,
+            )
+        )
+        convocation = convocation_result.scalar_one_or_none()
+        if not convocation:
+            raise ValueError("Convocation not found")
+
         result = await self.db.execute(
             select(Attendance).where(
-                Attendance.player_id == player_id,
                 Attendance.convocation_id == convocation_id,
+                Attendance.player_id == player_id,
             )
         )
         attendance = result.scalar_one_or_none()
-
         if not attendance:
-            raise ValueError("Attendance record not found")
+            raise ValueError("Attendance not found")
 
-        attendance.status = (
-            AttendanceStatus.CONFIRMED if confirm else AttendanceStatus.REJECTED
-        )
-        attendance.confirmed_at = datetime.now(UTC)
+        attendance.status = AttendanceStatus.CONFIRMED
         attendance.confirmed_by = ConfirmedBy.ADMIN
-
+        attendance.confirmed_at = datetime.now(UTC)
         await self.db.commit()
         await self.db.refresh(attendance)
         return attendance
 
-    async def expire_pending_attendances(self, convocation_id: int) -> int:
+    async def expire_pending_attendances(
+        self,
+        convocation_id: int,
+    ) -> int:
         """
-        Marca como EXPIRED todas las asistencias PENDING de una convocatoria.
-        Se llama cuando expira el plazo de confirmación.
-        Devuelve el número de asistencias expiradas.
+        Marca como EXPIRED todas las asistencias PENDING cuya convocatoria
+        ya pasó de la fecha límite. Ejecutar en un cron job.
         """
+        convocation_result = await self.db.execute(
+            select(Convocation).where(Convocation.id == convocation_id)
+        )
+        convocation = convocation_result.scalar_one()
+
+        now = datetime.now(UTC)
+        deadline = convocation.confirmation_deadline
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=UTC)
+
+        if now <= deadline:
+            return 0  # Aún no expiró
+
         result = await self.db.execute(
             select(Attendance).where(
                 Attendance.convocation_id == convocation_id,
                 Attendance.status == AttendanceStatus.PENDING,
             )
         )
-        pending = result.scalars().all()
-
-        for attendance in pending:
+        expired = list(result.scalars().all())
+        for attendance in expired:
             attendance.status = AttendanceStatus.EXPIRED
 
         await self.db.commit()
-        return len(pending)
+        return len(expired)

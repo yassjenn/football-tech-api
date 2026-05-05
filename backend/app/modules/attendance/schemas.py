@@ -12,14 +12,15 @@ class AttendanceConfirmRequest(BaseModel):
 
 
 class AttendanceResponse(BaseModel):
-    """Schema de respuesta con el estado de la asistencia."""
+    """Schema de respuesta de asistencia."""
 
     id: int
+    convocation_id: int
+    player_id: int
     status: AttendanceStatus
     confirmed_at: datetime | None
     confirmed_by: ConfirmedBy | None
-    player_id: int
-    convocation_id: int
+    confirmation_token: str
 
     model_config = {"from_attributes": True}
 
@@ -29,4 +30,3 @@ class AttendanceAdminConfirmRequest(BaseModel):
 
     player_id: int
     convocation_id: int
-    confirm: bool
