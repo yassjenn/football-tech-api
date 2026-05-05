@@ -6,6 +6,7 @@ from app.core.logging import setup_logging
 from app.core.telemetry import setup_telemetry
 from app.modules.attendance.router import router as attendance_router
 from app.modules.convocations.router import router as convocations_router
+from app.modules.evaluations.router import router as evaluations_router
 from app.modules.players.router import router as players_router
 from app.modules.training.router import router as sessions_router
 from app.modules.users.router import coach_router
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(sessions_router, prefix="/api/v1")
     app.include_router(convocations_router, prefix="/api/v1")
     app.include_router(attendance_router, prefix="/api/v1")
+    app.include_router(evaluations_router, prefix="/api/v1")
 
     @app.get("/health")
     async def health_check():
