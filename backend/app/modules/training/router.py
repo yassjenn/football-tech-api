@@ -2,9 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_admin, get_current_admin_or_coach
+from app.core.dependencies import (
+    get_current_admin,
+    get_current_admin_or_coach,
+    get_current_coach,
+)
 from app.modules.training.models import SessionStatus
 from app.modules.training.schemas import (
+    SessionAddContentRequest,
+    SessionAssignCoachRequest,
     SessionCreateRequest,
     SessionListResponse,
     SessionResponse,
@@ -92,6 +98,121 @@ async def cancel_session(
     try:
         service = SessionService(db)
         session = await service.cancel_session(session_id, current_user.organization_id)
+        return session
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+
+
+@router.post("/{session_id}/assign-coach", response_model=SessionResponse)
+async def assign_coach(
+    session_id: int,
+    data: SessionAssignCoachRequest,
+    current_user: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Admin asigna un entrenador a la sesión.
+    La sesión pasa a estado ASSIGNED.
+    """
+    try:
+        service = SessionService(db)
+        session = await service.assign_coach(
+            session_id, current_user.organization_id, data.coach_id
+        )
+        return session
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+
+
+@router.post("/{session_id}/accept", response_model=SessionResponse)
+async def accept_session(
+    session_id: int,
+    current_user: User = Depends(get_current_coach),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    El entrenador acepta la sesión asignada.
+    La sesión pasa a estado ACCEPTED.
+    """
+    try:
+        service = SessionService(db)
+        coach_profile_id = await service.get_coach_profile_id(
+            current_user.id, current_user.organization_id
+        )
+        session = await service.accept_session(session_id, coach_profile_id)
+        return session
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+
+
+@router.post("/{session_id}/start", response_model=SessionResponse)
+async def start_session(
+    session_id: int,
+    current_user: User = Depends(get_current_coach),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    El entrenador marca la sesión como en curso.
+    La sesión pasa a estado IN_PROGRESS.
+    """
+    try:
+        service = SessionService(db)
+        coach_profile_id = await service.get_coach_profile_id(
+            current_user.id, current_user.organization_id
+        )
+        session = await service.start_session(session_id, coach_profile_id)
+        return session
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+
+
+@router.post("/{session_id}/complete", response_model=SessionResponse)
+async def complete_session(
+    session_id: int,
+    current_user: User = Depends(get_current_coach),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    El entrenador completa la sesión.
+    La sesión pasa a estado COMPLETED.
+    """
+    try:
+        service = SessionService(db)
+        coach_profile_id = await service.get_coach_profile_id(
+            current_user.id, current_user.organization_id
+        )
+        session = await service.complete_session(session_id, coach_profile_id)
+        return session
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+
+
+@router.patch("/{session_id}/content", response_model=SessionResponse)
+async def add_content(
+    session_id: int,
+    data: SessionAddContentRequest,
+    current_user: User = Depends(get_current_admin_or_coach),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Añade o actualiza el contenido de ejercicios de la sesión.
+    Accesible por admin y coach asignado.
+    """
+    try:
+        service = SessionService(db)
+        session = await service.add_content(
+            session_id, current_user.organization_id, data.content
+        )
         return session
     except ValueError as e:
         raise HTTPException(

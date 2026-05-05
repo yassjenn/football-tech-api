@@ -45,3 +45,11 @@ class SessionListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class SessionAssignCoachRequest(BaseModel):
+    coach_id: int
+
+
+class SessionAddContentRequest(BaseModel):
+    content: str
