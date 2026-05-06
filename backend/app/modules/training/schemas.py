@@ -53,3 +53,9 @@ class SessionAssignCoachRequest(BaseModel):
 
 class SessionAddContentRequest(BaseModel):
     content: str
+
+
+class SessionGenerateContentRequest(BaseModel):
+    """Schema vacío — el endpoint usa los datos de la sesión existente."""
+
+    pass

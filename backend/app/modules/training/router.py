@@ -218,3 +218,58 @@ async def add_content(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         ) from e
+
+
+@router.post("/{session_id}/generate-content", response_model=SessionResponse)
+async def generate_content(
+    session_id: int,
+    current_user: User = Depends(get_current_admin_or_coach),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Genera contenido de ejercicios para la sesión usando IA.
+    El contenido se guarda en la sesión y se marca como generado por IA.
+    Accesible por admin y coach.
+    """
+    try:
+        from app.core.ai_content import generate_session_content
+
+        service = SessionService(db)
+        session = await service.get_session_by_id(
+            session_id, current_user.organization_id
+        )
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found",
+            )
+        if session.status == SessionStatus.COMPLETED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot edit a completed session",
+            )
+        if session.status == SessionStatus.CANCELLED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot edit a cancelled session",
+            )
+
+        content = await generate_session_content(
+            title=session.title,
+            duration_minutes=session.duration_minutes,
+            level=session.level,
+            age_group=session.age_group,
+            description=session.description,
+        )
+
+        updated = await service.add_content(
+            session_id,
+            current_user.organization_id,
+            content,
+            generated_by_ai=True,
+        )
+        return updated
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        ) from e
