@@ -28,3 +28,17 @@ env = [
     "LOG_LEVEL=ERROR",
     "OTLP_ENDPOINT=http://localhost:4317",
 ]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "app/core/telemetry.py",   # OpenTelemetry — difícil de testear en CI
+    "app/core/email.py",       # Email — mockeado en tests
+    "*/migrations/*",
+    "alembic/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = false
